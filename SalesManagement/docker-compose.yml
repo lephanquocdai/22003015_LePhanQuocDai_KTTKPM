@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - product-service
+      - order-service
+      - customer-service
+    networks:
+      - sales-network
+
+  product-service:
+    build: ./product-service
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/product_db
+      - RABBITMQ_URL=amqp://rabbitmq
+      - PORT=3001
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - sales-network
+
+  order-service:
+    build: ./order-service
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/order_db
+      - RABBITMQ_URL=amqp://rabbitmq
+      - PRODUCT_SERVICE_URL=http://product-service:3001
+      - CUSTOMER_SERVICE_URL=http://customer-service:3003
+      - PORT=3002
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - sales-network
+
+  customer-service:
+    build: ./customer-service
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/customer_db
+      - RABBITMQ_URL=amqp://rabbitmq
+      - PORT=3003
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - sales-network
+
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    networks:
+      - sales-network
+    volumes:
+      - mongodb_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - sales-network
+
+networks:
+  sales-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
